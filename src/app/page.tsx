@@ -13,13 +13,25 @@ export default function Home() {
     setResult(null);
     try {
       const res = await fetch("/api/agent", { method: "POST" });
-      const json = await res.json();
-      setResult(json);
+      const reader = res.body?.getReader();
+
+      const decoder = new TextDecoder();
+      let text = "";
+
+      if (reader) {
+        while (true) {
+          const {done, value} = await reader.read();
+          if (done) break;
+          text += decoder.decode(value, {stream: true});
+          setResult(text);
+        }
+      }
+    } catch (error) {
+      console.error(error);
     } finally {
       setLoading(false);
     }
   }
-
   return (
     <main className="min-h-screen p-6">
       <div className="mx-auto max-w-3xl space-y-4">
@@ -34,7 +46,7 @@ export default function Home() {
 
             {result && (
               <pre className="rounded-lg border p-3 text-sm overflow-auto">
-                {JSON.stringify(result, null, 2)}
+                {result}
               </pre>
             )}
           </CardContent>

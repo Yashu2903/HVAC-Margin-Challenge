@@ -49,6 +49,13 @@ const agent = new ToolLoopAgent({
 });
 
 export async function POST() {
+  if (!process.env.OPENAI_API_KEY) {
+    return new Response(
+      JSON.stringify({ error: "OpenAI API key is missing. Set OPENAI_API_KEY in your environment." }),
+      { status: 500, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
   const result = await agent.stream({
     messages: [
       {
