@@ -11,23 +11,39 @@ export default function Home() {
   async function run() {
     setLoading(true);
     setResult(null);
+  
     try {
       const res = await fetch("/api/agent", { method: "POST" });
+  
+      if (!res.ok) {
+        throw new Error("Agent request failed");
+      }
+  
       const reader = res.body?.getReader();
-
+  
+      if (!reader) {
+        throw new Error("No response stream available");
+      }
+  
       const decoder = new TextDecoder();
       let text = "";
-
-      if (reader) {
-        while (true) {
-          const {done, value} = await reader.read();
-          if (done) break;
-          text += decoder.decode(value, {stream: true});
+  
+      while (true) {
+        const { done, value } = await reader.read();
+      
+        if (value) {
+          text += decoder.decode(value);
           setResult(text);
         }
+      
+        if (done) break;
       }
+      text += decoder.decode();
+      setResult(text);
+
     } catch (error) {
       console.error(error);
+      setResult("Error running agent.");
     } finally {
       setLoading(false);
     }
@@ -45,7 +61,7 @@ export default function Home() {
             </Button>
 
             {result && (
-              <pre className="rounded-lg border p-3 text-sm overflow-auto">
+              <pre className="rounded-lg border p-3 text-sm whitespace-pre-wrap overflow-auto">
                 {result}
               </pre>
             )}

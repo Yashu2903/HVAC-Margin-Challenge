@@ -23,13 +23,6 @@ export type BillingHistory = {
     cumulative_billing: string;
 };
 
-export type BillingLineItem = {
-    project_id?: string;
-    total_billed: string;
-    scheduled_value: string;
-    pct_complete: string;
-};
-
 export type ChangeOrder = {
     project_id: string;
     amount: string;
@@ -46,4 +39,17 @@ export type FieldNote = {
     project_id: string;
     content: string;
     date: string;
+};
+
+export type SOVLine = {
+    project_id: string;
+    sov_line_id: string;
+    scheduled_value: string;
+};
+
+export type BillingLineItem = {
+    sov_line_id: string;
+    scheduled_value: string;
+    pct_complete: string;
+    total_billed: string;
 };

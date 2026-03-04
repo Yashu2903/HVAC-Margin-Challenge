@@ -3,6 +3,8 @@ import type { Contract } from "../data/types";
 
 async function listProjects() {
   const contracts = await loadCsv<Contract>("contracts.csv");
+
+  console.log("contracts loaded:", contracts.length);
   return contracts.map((c) => ({
     project_id: c.project_id,
     project_name: c.project_name,
