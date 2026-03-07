@@ -11,6 +11,7 @@ import { getProjectEvidence } from "@/lib/tools/getProjectEvidence";
 import { rankPortfolio } from "@/lib/tools/rankPortfolio";
 import { getProjectConfidence } from "@/lib/tools/getProjectConfidence";
 import { getProjectRiskScore } from "@/lib/tools/getProjectRiskScore";
+import { sendReportEmail } from "@/lib/email/sendReport";
 
 const agent = new ToolLoopAgent({
   model: openai("gpt-4o-mini"),
@@ -81,6 +82,17 @@ const agent = new ToolLoopAgent({
       execute: async ({ project_id }) =>
         await getProjectEvidence(project_id),
     }),
+
+    sendEmailReport: tool({
+      description: "Send the final portfolio analysis report to the CFO by email",
+      inputSchema: z.object({
+        report: z.string(),
+      }),
+      execute: async ({ report }) => {
+        await sendReportEmail(report);
+        return { status: "email_sent" };
+      },
+    }),
   },
 
   stopWhen: ({ steps }) => {
@@ -116,6 +128,7 @@ Process you MUST follow:
    - getProjectEvidence (for real evidence: field notes, RFIs, CO descriptions)
 4. Use searchFieldNotes when identifying root causes.
 5. Only after using tools produce the final report.
+6. Call sendEmailReport ONLY after the entire report is fully generated. Do not call it until you have finished writing the complete report. Pass the full report text as the report parameter.
 
 Never guess. Always use tools for data.
 
@@ -165,6 +178,7 @@ Do not output tool JSON. Only the formatted report.`,
     getProjectConfidence: (input) => input?.project_id ? `Assessing confidence for ${input.project_id}` : "Assessing confidence",
     getProjectEvidence: (input) => input?.project_id ? `Gathering evidence for ${input.project_id}` : "Gathering evidence",
     searchFieldNotes: (input) => input?.query ? `Searching field notes for "${input.query}"` : "Searching field notes",
+    sendEmailReport: () => "Sending report to CFO by email",
   };
 
   const encoder = new TextEncoder();
