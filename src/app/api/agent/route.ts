@@ -6,6 +6,7 @@ import { listProjects } from "@/lib/tools/listProjects";
 import { getProjectFinancials } from "@/lib/tools/getProjectFinancials";
 import { getProjectSignals } from "@/lib/tools/getProjectSignals";
 import { searchFieldNotes } from "@/lib/tools/searchFieldNotes";
+import { getProjectEvidence } from "@/lib/tools/getProjectEvidence";
 
 import { rankPortfolio } from "@/lib/tools/rankPortfolio";
 import { getProjectConfidence } from "@/lib/tools/getProjectConfidence";
@@ -71,6 +72,15 @@ const agent = new ToolLoopAgent({
       execute: async ({ project_id }) =>
         await getProjectConfidence(project_id),
     }),
+
+    getProjectEvidence: tool({
+      description: "Get real evidence: field note snippets, RFI subjects, change order descriptions (not generic risk labels)",
+      inputSchema: z.object({
+        project_id: z.string(),
+      }),
+      execute: async ({ project_id }) =>
+        await getProjectEvidence(project_id),
+    }),
   },
 
   stopWhen: ({ steps }) => {
@@ -98,30 +108,42 @@ export async function POST() {
 Process you MUST follow:
 
 1. ALWAYS call rankPortfolio before writing any analysis.
-2. Use the returned data to identify the top 3 risky projects.
+2. Use the returned data to identify the top 3 risky projects (by portfolio_risk_index).
 3. For each risky project call:
-   - getProjectRiskScore
+   - getProjectRiskScore (includes evidence)
    - getProjectFinancials
    - getProjectSignals
+   - getProjectEvidence (for real evidence: field notes, RFIs, CO descriptions)
 4. Use searchFieldNotes when identifying root causes.
 5. Only after using tools produce the final report.
 
 Never guess. Always use tools for data.
 
+EVIDENCE RULE: Only include real evidence in the Evidence section:
+- Field note snippets (e.g., "Field note (Feb 14): Crew waiting on revised piping layout from engineer.")
+- RFI subjects
+- Change order descriptions
+Do NOT use generic labels like "High billing lag" as evidence—that is a driver, not evidence.
+
+PORTFOLIO SUMMARY RULE: If all projects are Low risk (overall_status: Healthy), say:
+"Overall: Healthy. Top relative risks (none critical)"
+and describe the highest-relative-risk projects as "highest relative risks" not "critical risks."
+
 OUTPUT FORMAT (must follow exactly):
 
 PORTFOLIO SUMMARY
-- Overall: <Healthy/Mixed/At Risk>
+- Overall: <Healthy/Mixed/At Risk> (use rankPortfolio.overall_status)
+- Patterns: <any cross-project patterns from rankPortfolio.patterns>
 - Top risks: <bullets>
 
-TOP RISK PROJECTS (ranked)
+TOP RISK PROJECTS (ranked by portfolio_risk_index)
 For each:
 - Project: <id>
 - Risk: <Low/Medium/High> (score X/10)
-- True margin loss proxy ($): <cost_over_earned>
-- Recoverable exposure ($): <recoverable_exposure>
+- Contract Value | Earned Value | Cost to Date | Billing Lag
+- Margin ($): <margin> | Margin %: <margin_pct>
 - Drivers: <bullets>
-- Evidence: <1-3 short snippets or references>
+- Evidence: <1-3 field note snippets, RFI subjects, or CO descriptions—NOT generic labels>
 - Confidence: <Low/Medium/High>
 - Next 7 days actions: <bullets>
 
@@ -133,9 +155,6 @@ Do not output tool JSON. Only the formatted report.`,
       },
     ],
   });
-
-  const test = await rankPortfolio();
-  console.log("portfolio ranking:", test);
 
   return result.toTextStreamResponse({
     headers: {

@@ -7,17 +7,27 @@ async function loadCsv<T = Record<string, unknown>>(
 ): Promise<T[]> {
   const filePath = path.join(process.cwd(), "data", filename);
   const fileContent = fs.readFileSync(filePath, "utf8");
-  const parsed = Papa.parse<T>(fileContent, {
+  const parsed = Papa.parse<T>(fileContent.trim(), {
     header: true,
     skipEmptyLines: true,
+    transformHeader: (header) => header.trim(),
+    quoteChar: '"',
+    escapeChar: '"',
+    dynamicTyping: false,
   });
 
   if (parsed.errors.length) {
-    console.error(parsed.errors);
-    throw new Error(`Error parsing CSV file: ${filename}`);
+    console.warn(`[loadCsv ${filename}] Parse warnings (${parsed.errors.length}):`, parsed.errors.slice(0, 5));
   }
 
-  return parsed.data as T[];
+  // Filter out rows that failed parsing (e.g. TooManyFields) - they may have wrong structure
+  const errorRows = new Set(parsed.errors.map((e) => (e as { row?: number }).row).filter((r): r is number => typeof r === "number"));
+  const data = parsed.data as T[];
+  const filtered = errorRows.size > 0
+    ? data.filter((_, i) => !errorRows.has(i))
+    : data;
+
+  return filtered;
 }
 
 export { loadCsv };

@@ -20,19 +20,21 @@ export type MaterialDelivery = {
 
 export type BillingHistory = {
     project_id: string;
-    cumulative_billing: string;
+    cumulative_billed: string;
 };
 
 export type ChangeOrder = {
     project_id: string;
     amount: string;
     status: string;
+    description?: string;
 };
 
 export type RFI = {
     project_id: string;
     status: string;
     cost_impact: string;
+    subject?: string;
 };
 
 export type FieldNote = {
@@ -49,6 +51,8 @@ export type SOVLine = {
 
 export type BillingLineItem = {
     sov_line_id: string;
+    project_id?: string;
+    application_number?: string;
     scheduled_value: string;
     pct_complete: string;
     total_billed: string;

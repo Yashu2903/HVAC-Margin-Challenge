@@ -7,7 +7,10 @@ export async function getProjectSignals(projectId: string) {
     const rfis = await loadCsv<RFI>("rfis.csv");
 
     const projectCOs = changeOrders.filter(c => c.project_id === projectId);
-    const pendingCOs = projectCOs.filter(c => c.status?.toLowerCase() === "pending");
+    const pendingStatuses = ["pending", "under review"];
+    const pendingCOs = projectCOs.filter(c =>
+        pendingStatuses.includes(String(c.status || "").toLowerCase())
+    );
 
     const pendingCOValue = pendingCOs.reduce(
         (acc, c) => acc + Number(c.amount || 0), 0);
@@ -22,13 +25,13 @@ export async function getProjectSignals(projectId: string) {
             total: projectCOs.length,
             pending_count: pendingCOs.length,
             pending_value: Math.round(pendingCOValue),
+            pending_descriptions: pendingCOs.slice(0, 5).map((c) => c.description ?? ""),
         },
         rfis: {
             total: projectRFIs.length,
             open: openRFIs.length,
             cost_impact: costImpactRFIs.length,
-
+            open_subjects: openRFIs.slice(0, 5).map((r) => r.subject ?? ""),
         },
-
     };
 }

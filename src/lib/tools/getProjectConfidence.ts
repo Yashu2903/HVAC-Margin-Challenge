@@ -18,12 +18,12 @@ export async function getProjectConfidence(projectId: string) {
 
     let points = 0;
 
-    if(financials.cost_over_earned > 0) points += 2;
-    if(signals.change_orders.pending_value > 0) points += 2;
-    if(signals.rfis.cost_impact > 0) points += 1;
-    if(signals.rfis.open > 5) points += 1;
-    if(financials.billing_lag > 0) points += 1;
-    if(evidence > 5) points += 2;
+    if (financials.cost_over_earned > 100_000) points += 2;
+    if (signals.change_orders.pending_value > 100_000) points += 2;
+    if (signals.rfis.cost_impact > 0) points += 1;
+    if (signals.rfis.open > 5) points += 1;
+    if (financials.billing_lag > 50_000) points += 1;
+    if (evidence > 5) points += 2;
 
     const confidence = points >= 7 ? "High" : points >= 4 ? "Medium" : "Low";
 

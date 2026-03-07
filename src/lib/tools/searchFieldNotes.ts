@@ -3,12 +3,12 @@ import type { FieldNote } from "../data/types";
 
 async function searchFieldNotes(projectId: string, query: string) {
   const notes = await loadCsv<FieldNote>("field_notes.csv");
-  const queryWords = query.toLowerCase().split(/\s+/);
+  const normalizedQuery = query.toLowerCase().replace(/_/g, " ").trim();
 
   return notes
     .filter((note) => note.project_id === projectId)
     .filter((note) =>
-      note.content.toLowerCase().includes(queryWords.join(" "))
+      normalizedQuery ? (note.content ?? "").toLowerCase().includes(normalizedQuery) : false
     )
     .slice(0, 10)
     .map((note) => ({
