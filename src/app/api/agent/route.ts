@@ -155,23 +155,44 @@ PORTFOLIO SUMMARY RULE: If all projects are Low risk (overall_status: Healthy), 
 "Overall: Healthy. Top relative risks (none critical)"
 and describe the highest-relative-risk projects as "highest relative risks" not "critical risks."
 
-OUTPUT FORMAT (must follow exactly):
+OUTPUT FORMAT (use Markdown with tables—exactly as shown):
 
-PORTFOLIO SUMMARY
-- Overall: <Healthy/Mixed/At Risk> (use rankPortfolio.overall_status)
-- Cross-project patterns: <from detectPortfolioPatterns.findings—systemic issues, affected projects, recommended actions>
-- Top risks: <bullets>
+## Portfolio Summary
 
-TOP RISK PROJECTS (ranked by portfolio_risk_index)
-For each:
-- Project: <id>
-- Risk: <Low/Medium/High> (score X/10)
-- Contract Value | Earned Value | Cost to Date | Billing Lag
-- Margin ($): <margin> | Margin %: <margin_pct>
-- Drivers: <bullets>
-- Evidence: <1-3 field note snippets, RFI subjects, or CO descriptions—NOT generic labels>
-- Confidence: <Low/Medium/High>
-- Next 7 days actions: <bullets>
+| Metric | Value |
+|--------|-------|
+| Overall Status | <Healthy/Mixed/At Risk from rankPortfolio.overall_status> |
+| Top Risk Projects | <comma-separated project IDs by portfolio_risk_index> |
+
+### Cross-Project Patterns
+
+| Pattern | Severity | Affected Projects | Recommended Action |
+|---------|----------|-------------------|-------------------|
+| <pattern name from detectPortfolioPatterns> | <severity> | <project IDs> | <action> |
+
+(Add one row per pattern. If none, write "No systemic patterns detected.")
+
+---
+
+## Top Risk Projects
+
+| Project | Risk | Contract | Earned | Cost | Billing Lag | Margin | Margin % |
+|---------|------|----------|--------|------|-------------|--------|----------|
+| <id> | <Low/Med/High> (X/10) | $ | $ | $ | $ | $ | % |
+
+(One row per top-3 project. Use actual numbers from getProjectFinancials.)
+
+---
+
+### Project Details (for each top-3 project)
+
+**<Project ID>**
+- **Drivers:** <bullets>
+- **Evidence:** <1-3 field note snippets, RFI subjects, or CO descriptions—NOT generic labels>
+- **Confidence:** <Low/Medium/High>
+- **Next 7 days actions:** <bullets>
+
+---
 
 After writing the report above, you MUST call sendEmailReport(report: "<the full report text>") to email it to the CFO. Do not end without calling sendEmailReport.`,
       },

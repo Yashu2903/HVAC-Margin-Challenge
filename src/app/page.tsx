@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -189,9 +191,49 @@ export default function Home() {
             {result && (
               <div>
                 <h3 className="font-semibold mb-2">Portfolio Risk Report</h3>
-                <pre className="rounded-lg border p-4 text-sm whitespace-pre-wrap overflow-auto bg-muted/30 max-h-[32rem]">
-                  {result}
-                </pre>
+                <div className="rounded-lg border p-4 overflow-auto bg-muted/30 max-h-[32rem] text-sm leading-relaxed">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      table: ({ children }) => (
+                        <div className="overflow-x-auto my-4">
+                          <table className="min-w-full border-collapse border border-border text-sm">
+                            {children}
+                          </table>
+                        </div>
+                      ),
+                      thead: ({ children }) => (
+                        <thead className="bg-muted/50">{children}</thead>
+                      ),
+                      th: ({ children }) => (
+                        <th className="border border-border px-3 py-2 text-left font-semibold">
+                          {children}
+                        </th>
+                      ),
+                      td: ({ children }) => (
+                        <td className="border border-border px-3 py-2">{children}</td>
+                      ),
+                      tr: ({ children }) => (
+                        <tr className="border-b border-border last:border-b-0">{children}</tr>
+                      ),
+                      h2: ({ children }) => (
+                        <h2 className="text-lg font-semibold mt-6 mb-2 first:mt-0">{children}</h2>
+                      ),
+                      h3: ({ children }) => (
+                        <h3 className="text-base font-medium mt-4 mb-2">{children}</h3>
+                      ),
+                      ul: ({ children }) => (
+                        <ul className="list-disc list-inside my-2 space-y-1">{children}</ul>
+                      ),
+                      li: ({ children }) => <li className="text-sm">{children}</li>,
+                      strong: ({ children }) => (
+                        <strong className="font-semibold">{children}</strong>
+                      ),
+                    }}
+                  >
+                    {result}
+                  </ReactMarkdown>
+                </div>
               </div>
             )}
           </CardContent>

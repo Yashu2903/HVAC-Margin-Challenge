@@ -1,15 +1,7 @@
 import { Resend } from "resend";
+import { marked } from "marked";
 
 const apiKey = process.env.RESEND_API_KEY;
-
-function escapeHtml(text: string): string {
-    return text
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/\n/g, "<br>");
-}
 
 export async function sendReportEmail(report: string) {
     console.log("[sendReportEmail] Step 1: Function called, report length:", report?.length ?? 0);
@@ -25,13 +17,24 @@ export async function sendReportEmail(report: string) {
     const resend = new Resend(apiKey);
     console.log("[sendReportEmail] Step 3: Resend client created");
 
+    const reportHtml = marked.parse(report, { async: false }) as string;
     const html = `
 <!DOCTYPE html>
 <html>
-<head><meta charset="utf-8"><title>HVAC Portfolio Report</title></head>
-<body style="font-family: sans-serif; padding: 1rem; max-width: 800px;">
+<head><meta charset="utf-8"><title>HVAC Portfolio Report</title>
+<style>
+  body { font-family: sans-serif; padding: 1rem; max-width: 900px; font-size: 14px; line-height: 1.5; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; }
+  th { background: #f5f5f5; font-weight: 600; }
+  h2 { font-size: 1.1rem; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  h3 { font-size: 1rem; margin-top: 1rem; margin-bottom: 0.5rem; }
+  ul { margin: 0.5rem 0; padding-left: 1.5rem; }
+</style>
+</head>
+<body>
 <h1 style="font-size: 1.25rem; margin-bottom: 1rem;">HVAC Portfolio Risk Report</h1>
-<div style="white-space: pre-wrap; font-size: 0.875rem; line-height: 1.5;">${escapeHtml(report)}</div>
+<div>${reportHtml}</div>
 </body>
 </html>`;
 
