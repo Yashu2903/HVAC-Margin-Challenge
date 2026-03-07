@@ -156,9 +156,44 @@ Do not output tool JSON. Only the formatted report.`,
     ],
   });
 
-  return result.toTextStreamResponse({
+  const activityLabels: Record<string, (input?: Record<string, unknown>) => string> = {
+    rankPortfolio: () => "Scanning portfolio financials",
+    listProjects: () => "Loading project list",
+    getProjectFinancials: (input) => input?.project_id ? `Getting financials for ${input.project_id}` : "Getting project financials",
+    getProjectSignals: (input) => input?.project_id ? `Reviewing RFIs and change orders for ${input.project_id}` : "Reviewing RFIs and change orders",
+    getProjectRiskScore: (input) => input?.project_id ? `Investigating ${input.project_id}` : "Computing risk score",
+    getProjectConfidence: (input) => input?.project_id ? `Assessing confidence for ${input.project_id}` : "Assessing confidence",
+    getProjectEvidence: (input) => input?.project_id ? `Gathering evidence for ${input.project_id}` : "Gathering evidence",
+    searchFieldNotes: (input) => input?.query ? `Searching field notes for "${input.query}"` : "Searching field notes",
+  };
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        for await (const part of result.fullStream) {
+          const p = part as { type: string; toolName?: string; input?: Record<string, unknown>; text?: string };
+          if (p.type === "tool-call" && p.toolName) {
+            const label = activityLabels[p.toolName]?.(p.input as Record<string, unknown>) ?? `Running ${p.toolName}`;
+            controller.enqueue(encoder.encode(JSON.stringify({ type: "activity", text: label }) + "\n"));
+          } else if (p.type === "text-delta" && p.text) {
+            controller.enqueue(encoder.encode(JSON.stringify({ type: "text", chunk: p.text }) + "\n"));
+          }
+        }
+        controller.enqueue(encoder.encode(JSON.stringify({ type: "done" }) + "\n"));
+      } catch (err) {
+        controller.enqueue(encoder.encode(JSON.stringify({ type: "error", message: String(err) }) + "\n"));
+      } finally {
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
     headers: {
-      "Content-Type": "text/plain; charset=utf-8",
+      "Content-Type": "application/x-ndjson; charset=utf-8",
+      "Cache-Control": "no-cache",
+      "Connection": "keep-alive",
     },
   });
 }
