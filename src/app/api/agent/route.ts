@@ -11,6 +11,7 @@ import { getProjectEvidence } from "@/lib/tools/getProjectEvidence";
 import { rankPortfolio } from "@/lib/tools/rankPortfolio";
 import { getProjectConfidence } from "@/lib/tools/getProjectConfidence";
 import { getProjectRiskScore } from "@/lib/tools/getProjectRiskScore";
+import { detectPortfolioPatterns } from "@/lib/tools/detectPortfolioPatterns";
 import { sendReportEmail } from "@/lib/email/sendReport";
 
 const agent = new ToolLoopAgent({
@@ -57,6 +58,12 @@ const agent = new ToolLoopAgent({
         console.log("[AGENT] rankPortfolio execute called");
         return await rankPortfolio();
       },
+    }),
+
+    detectPortfolioPatterns: tool({
+      description: "Detect cross-project patterns (systemic billing lag, shared risk drivers, margin erosion, scope drift). Use to identify portfolio-level issues, not just individual project risks.",
+      inputSchema: z.object({}),
+      execute: async () => await detectPortfolioPatterns(),
     }),
 
     getProjectRiskScore: tool({
@@ -129,13 +136,14 @@ export async function POST() {
 Process you MUST follow (complete ALL steps in order):
 
 1. Call rankPortfolio first. Wait for the result.
-2. From rankPortfolio.ranked, identify the top 3 projects by portfolio_risk_index.
-3. For EACH of those 3 projects, call in sequence: getProjectRiskScore, getProjectFinancials, getProjectSignals, getProjectEvidence. Do not skip these.
-4. Use searchFieldNotes when identifying root causes for risky projects.
-5. Produce the final report in the OUTPUT FORMAT below.
-6. CRITICAL: As your FINAL action, you MUST call sendEmailReport with the complete report text as the report parameter. The task is NOT complete until you have called sendEmailReport. Do not finish without calling this tool.
+2. Call detectPortfolioPatterns to identify cross-project patterns (systemic issues across the portfolio).
+3. From rankPortfolio.ranked, identify the top 3 projects by portfolio_risk_index.
+4. For EACH of those 3 projects, call in sequence: getProjectRiskScore, getProjectFinancials, getProjectSignals, getProjectEvidence. Do not skip these.
+5. Use searchFieldNotes when identifying root causes for risky projects.
+6. Produce the final report in the OUTPUT FORMAT below. Include detectPortfolioPatterns findings in the PORTFOLIO SUMMARY (Patterns section).
+7. CRITICAL: As your FINAL action, you MUST call sendEmailReport with the complete report text as the report parameter. The task is NOT complete until you have called sendEmailReport. Do not finish without calling this tool.
 
-Never guess. Always use tools for data. Do not skip steps 2-6.
+Never guess. Always use tools for data. Do not skip steps 2-7.
 
 EVIDENCE RULE: Only include real evidence in the Evidence section:
 - Field note snippets (e.g., "Field note (Feb 14): Crew waiting on revised piping layout from engineer.")
@@ -151,7 +159,7 @@ OUTPUT FORMAT (must follow exactly):
 
 PORTFOLIO SUMMARY
 - Overall: <Healthy/Mixed/At Risk> (use rankPortfolio.overall_status)
-- Patterns: <any cross-project patterns from rankPortfolio.patterns>
+- Cross-project patterns: <from detectPortfolioPatterns.findings—systemic issues, affected projects, recommended actions>
 - Top risks: <bullets>
 
 TOP RISK PROJECTS (ranked by portfolio_risk_index)
@@ -184,6 +192,7 @@ After writing the report above, you MUST call sendEmailReport(report: "<the full
     getProjectEvidence: (input) => input?.project_id ? `Gathering evidence for ${input.project_id}` : "Gathering evidence",
     searchFieldNotes: (input) => input?.query ? `Searching field notes for "${input.query}"` : "Searching field notes",
     sendEmailReport: () => "Sending report to CFO by email",
+    detectPortfolioPatterns: () => "Detecting cross-project patterns",
   };
 
   const encoder = new TextEncoder();
