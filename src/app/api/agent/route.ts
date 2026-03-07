@@ -53,7 +53,10 @@ const agent = new ToolLoopAgent({
     rankPortfolio: tool({
       description: "Rank projects by risk with key drivers and exposure metrics",
       inputSchema: z.object({}),
-      execute: async () => await rankPortfolio(),
+      execute: async () => {
+        console.log("[AGENT] rankPortfolio execute called");
+        return await rankPortfolio();
+      },
     }),
 
     getProjectRiskScore: tool({
@@ -89,19 +92,24 @@ const agent = new ToolLoopAgent({
         report: z.string(),
       }),
       execute: async ({ report }) => {
+        console.log("[sendEmailReport tool] Agent invoked sendEmailReport, report length:", report?.length ?? 0);
         await sendReportEmail(report);
+        console.log("[sendEmailReport tool] sendReportEmail completed successfully");
         return { status: "email_sent" };
       },
     }),
   },
 
   stopWhen: ({ steps }) => {
-    console.log("Agent steps:", steps.length);
-    return steps.length >= 10;
+    const stop = steps.length >= 15;
+    if (stop) console.log("[AGENT] stopWhen: reached", steps.length, "steps, stopping");
+    return stop;
   }
 });
 
 export async function POST() {
+  console.log("[AGENT] ========== POST /api/agent called ==========");
+
   if (!process.env.OPENAI_API_KEY) {
     return new Response(
       JSON.stringify({
@@ -111,26 +119,23 @@ export async function POST() {
     );
   }
 
+  console.log("[AGENT] Starting agent.stream()...");
   const result = await agent.stream({
     messages: [
       {
         role: "system",
         content: `You are a CFO-level AI agent protecting margin across HVAC construction projects.
 
-Process you MUST follow:
+Process you MUST follow (complete ALL steps in order):
 
-1. ALWAYS call rankPortfolio before writing any analysis.
-2. Use the returned data to identify the top 3 risky projects (by portfolio_risk_index).
-3. For each risky project call:
-   - getProjectRiskScore (includes evidence)
-   - getProjectFinancials
-   - getProjectSignals
-   - getProjectEvidence (for real evidence: field notes, RFIs, CO descriptions)
-4. Use searchFieldNotes when identifying root causes.
-5. Only after using tools produce the final report.
-6. Call sendEmailReport ONLY after the entire report is fully generated. Do not call it until you have finished writing the complete report. Pass the full report text as the report parameter.
+1. Call rankPortfolio first. Wait for the result.
+2. From rankPortfolio.ranked, identify the top 3 projects by portfolio_risk_index.
+3. For EACH of those 3 projects, call in sequence: getProjectRiskScore, getProjectFinancials, getProjectSignals, getProjectEvidence. Do not skip these.
+4. Use searchFieldNotes when identifying root causes for risky projects.
+5. Produce the final report in the OUTPUT FORMAT below.
+6. CRITICAL: As your FINAL action, you MUST call sendEmailReport with the complete report text as the report parameter. The task is NOT complete until you have called sendEmailReport. Do not finish without calling this tool.
 
-Never guess. Always use tools for data.
+Never guess. Always use tools for data. Do not skip steps 2-6.
 
 EVIDENCE RULE: Only include real evidence in the Evidence section:
 - Field note snippets (e.g., "Field note (Feb 14): Crew waiting on revised piping layout from engineer.")
@@ -160,7 +165,7 @@ For each:
 - Confidence: <Low/Medium/High>
 - Next 7 days actions: <bullets>
 
-Do not output tool JSON. Only the formatted report.`,
+After writing the report above, you MUST call sendEmailReport(report: "<the full report text>") to email it to the CFO. Do not end without calling sendEmailReport.`,
       },
       {
         role: "user",
@@ -185,17 +190,24 @@ Do not output tool JSON. Only the formatted report.`,
   const stream = new ReadableStream({
     async start(controller) {
       try {
+        console.log("[AGENT] Consuming fullStream...");
         for await (const part of result.fullStream) {
           const p = part as { type: string; toolName?: string; input?: Record<string, unknown>; text?: string };
           if (p.type === "tool-call" && p.toolName) {
+            console.log("[AGENT] Tool called:", p.toolName);
+            if (p.toolName === "sendEmailReport") {
+              console.log("[AGENT] >>> sendEmailReport tool invoked by agent <<<");
+            }
             const label = activityLabels[p.toolName]?.(p.input as Record<string, unknown>) ?? `Running ${p.toolName}`;
             controller.enqueue(encoder.encode(JSON.stringify({ type: "activity", text: label }) + "\n"));
           } else if (p.type === "text-delta" && p.text) {
             controller.enqueue(encoder.encode(JSON.stringify({ type: "text", chunk: p.text }) + "\n"));
           }
         }
+        console.log("[AGENT] Stream complete, sending done");
         controller.enqueue(encoder.encode(JSON.stringify({ type: "done" }) + "\n"));
       } catch (err) {
+        console.error("[AGENT] Stream error:", err);
         controller.enqueue(encoder.encode(JSON.stringify({ type: "error", message: String(err) }) + "\n"));
       } finally {
         controller.close();
