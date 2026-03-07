@@ -42,7 +42,7 @@ export async function sendReportEmail(report: string) {
         console.log("[sendReportEmail] Step 4: Sending email...");
         const { data, error } = await resend.emails.send({
             from: "onboarding@resend.dev",
-            to: "yashwanth292003@gmail.com",
+            to: "your_gmail_address@domain.com",
             subject: "HVAC Construction Portfolio Analysis Report",
             html,
         });
